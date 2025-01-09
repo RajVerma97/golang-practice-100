@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-type TicketStatus string
+type TicketStatus int32
 
 const (
-	AVAILABLE TicketStatus = "AVAILABLE"
-	BOOKED    TicketStatus = "BOOKED"
+	AVAILABLE TicketStatus = iota
+	BOOKED
 )
 
 type Ticket struct {
