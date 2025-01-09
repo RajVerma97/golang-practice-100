@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,6 +20,11 @@ type Ticket struct {
 	ID     int
 	Price  int
 	Status TicketStatus
+}
+
+type Metrics struct {
+	SuccessfulBookings int32
+	FailedBookings     int32
 }
 
 type UserContactDetails struct {
@@ -36,10 +42,10 @@ type User struct {
 }
 
 var (
-	tickets map[int]*Ticket
-	users   map[int]*User
-	userLock   sync.RWMutex
+	tickets    map[int]*Ticket
+	users      map[int]*User
 	ticketLock sync.RWMutex
+	metrics    Metrics
 	wg         sync.WaitGroup
 )
 
@@ -73,8 +79,6 @@ func CreateUsers(count int) {
 
 func fetchTicketById(ticketId int) (*Ticket, error) {
 
-	ticketLock.RLock()
-	defer ticketLock.RUnlock()
 	if ticket, exists := tickets[ticketId]; exists {
 		return ticket, nil
 	}
@@ -85,8 +89,6 @@ func fetchTicketById(ticketId int) (*Ticket, error) {
 
 func fetchUserById(userId int) (*User, error) {
 
-	userLock.RLock()
-	defer userLock.RUnlock()
 	if user, exists := users[userId]; exists {
 		return user, nil
 	}
@@ -94,8 +96,8 @@ func fetchUserById(userId int) (*User, error) {
 }
 
 func BookTicket(userId int, ticketId int) error {
-	ticketLock.RLock()
-	defer ticketLock.RUnlock()
+	ticketLock.Lock()
+	defer ticketLock.Unlock()
 
 	ticket, err := fetchTicketById(ticketId)
 	if err != nil {
@@ -113,6 +115,7 @@ func BookTicket(userId int, ticketId int) error {
 	}
 
 	ticket.Status = BOOKED
+
 	userBookedTickets := user.BookedTickets
 	user.BookedTickets = append(userBookedTickets, *ticket)
 
@@ -129,11 +132,19 @@ func simulateUserBooking(userId int) {
 		err := BookTicket(userId, ticketId)
 		if err != nil {
 			fmt.Printf("User %d failed to book ticket %d: %s\n", userId, ticketId, err)
+			atomic.AddInt32(&metrics.FailedBookings, 1)
 		} else {
 			fmt.Printf("User %d successfully booked ticket %d\n", userId, ticketId)
+			atomic.AddInt32(&metrics.SuccessfulBookings, 1)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func PrintMetrics() {
+	fmt.Println("Successful Bookings:", metrics.SuccessfulBookings)
+	fmt.Println("Failed Bookings:", metrics.FailedBookings)
+
 }
 
 func main() {
@@ -151,6 +162,8 @@ func main() {
 		go simulateUserBooking(user.ID)
 	}
 	wg.Wait()
+
+	PrintMetrics()
 
 	fmt.Println(time.Since(start))
 
