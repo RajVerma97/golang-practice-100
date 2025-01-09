@@ -117,10 +117,10 @@ func BookTicket(userId int, ticketId int) error {
 func simulateUserBooking(userId int) {
 	defer wg.Done()
 
-	rand.Seed(time.Now().UnixNano())
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 1; i <= 3; i++ {
-		ticketId := rand.Intn(len(tickets)) + 1
+		ticketId := random.Intn(len(tickets)) + 1
 		err := BookTicket(userId, ticketId)
 		if err != nil {
 			fmt.Printf("User %d failed to book ticket %d: %s\n", userId, ticketId, err)
