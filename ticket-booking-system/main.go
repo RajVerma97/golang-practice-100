@@ -36,70 +36,54 @@ type User struct {
 }
 
 var (
-	tickets []Ticket
-	users   []User
+	tickets map[int]*Ticket
+	users   map[int]*User
 	mu      sync.Mutex
 	wg      sync.WaitGroup
 )
 
 func CreateTickets(count int) {
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	tickets = make(map[int]*Ticket, count)
 
-	go func() {
-		defer wg.Done()
-		for i := 1; i <= count; i++ {
-			ticket := Ticket{
-				ID:     i,
-				Status: AVAILABLE,
-			}
-			tickets = append(tickets, ticket)
+	for i := 1; i <= count; i++ {
+		tickets[i] = &Ticket{
+			ID:     i,
+			Status: AVAILABLE,
 		}
-	}()
 
-	wg.Wait()
+	}
+
 }
 
 func CreateUsers(count int) {
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	users = make(map[int]*User, count)
 
-	go func() {
-		defer wg.Done()
-		for i := 1; i <= count; i++ {
-			user := User{
-				ID:            i,
-				Username:      fmt.Sprintf("User %d", i),
-				BookedTickets: []Ticket{},
-			}
-			users = append(users, user)
+	for i := 1; i <= count; i++ {
+		users[i] = &User{
+			ID:            i,
+			Username:      fmt.Sprintf("User %d", i),
+			BookedTickets: []Ticket{},
 		}
-	}()
+	}
 
-	wg.Wait()
 }
 
 func fetchTicketById(ticketId int) (*Ticket, error) {
 
-	for i := range tickets {
-		if tickets[i].ID == ticketId {
-			return &tickets[i], nil
-		}
-
+	if ticket, exists := tickets[ticketId]; exists {
+		return ticket, nil
 	}
+
 	return nil, errors.New("ticket not found")
 
 }
 
 func fetchUserById(userId int) (*User, error) {
 
-	for i := range users {
-		if users[i].ID == userId {
-			return &users[i], nil
-		}
-
+	if user, exists := users[userId]; exists {
+		return user, nil
 	}
 	return nil, errors.New("user not found")
 }
@@ -151,8 +135,8 @@ func main() {
 
 	start := time.Now()
 
-	ticketCount := 10000
-	userCount := 2000
+	ticketCount := 1000000
+	userCount := 200000
 
 	CreateTickets(ticketCount)
 	CreateUsers(userCount)
