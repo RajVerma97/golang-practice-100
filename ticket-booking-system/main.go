@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,14 +26,6 @@ type Ticket struct {
 type Metrics struct {
 	SuccessfulBookings int32
 	FailedBookings     int32
-}
-
-type UserContactDetails struct {
-	MobileNumber string
-	Address      string
-	City         string
-	Country      string
-	Pincode      string
 }
 
 type User struct {
@@ -125,8 +118,14 @@ func BatchBooking(userId int, ticketIds []int) {
 	}
 }
 
-func simulateUserBooking(userId int, batchSize int) {
+func worker(jobs <-chan []int) {
+	for ticketIds := range jobs {
+		userId := random.Intn(len(users)) + 1 // Randomly assign a user ID
+		BatchBooking(userId, ticketIds)
+	}
+}
 
+func simulateUserBooking(batchSize int, jobs chan<- []int) {
 	var ticketIdsBatch []int
 
 	for i := 1; i <= 3; i++ {
@@ -135,18 +134,15 @@ func simulateUserBooking(userId int, batchSize int) {
 
 		if len(ticketIdsBatch) == batchSize {
 			wg.Add(1)
-			go BatchBooking(userId, ticketIdsBatch)
+			jobs <- ticketIdsBatch
 			ticketIdsBatch = []int{}
 		}
-
 	}
 
 	if len(ticketIdsBatch) > 0 {
 		wg.Add(1)
-		go BatchBooking(userId, ticketIdsBatch)
-		return
+		jobs <- ticketIdsBatch
 	}
-
 }
 
 func PrintMetrics() {
@@ -160,17 +156,30 @@ func main() {
 	ticketCount := 1000000
 	userCount := 200000
 	batchSize := 1000
+	workerCount := runtime.NumCPU() * 2
 
 	CreateTickets(ticketCount)
 	CreateUsers(userCount)
 
-	for _, user := range users {
-		go simulateUserBooking(user.ID, batchSize)
+	// Create a buffered channel for jobs
+	jobs := make(chan []int, workerCount)
+
+	// Start worker pool
+	for w := 1; w <= workerCount; w++ {
+		go worker(jobs)
 	}
 
+	//send tasks  to the channels (jobs)
+	for range users {
+		go simulateUserBooking(batchSize, jobs)
+	}
+
+	// Wait for all bookings to complete
 	wg.Wait()
 
-	PrintMetrics()
+	// Close the jobs channel
+	close(jobs)
 
+	PrintMetrics()
 	fmt.Println(time.Since(start))
 }
