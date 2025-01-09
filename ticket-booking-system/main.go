@@ -38,8 +38,9 @@ type User struct {
 var (
 	tickets map[int]*Ticket
 	users   map[int]*User
-	mu      sync.Mutex
-	wg      sync.WaitGroup
+	userLock   sync.RWMutex
+	ticketLock sync.RWMutex
+	wg         sync.WaitGroup
 )
 
 func CreateTickets(count int) {
@@ -72,6 +73,8 @@ func CreateUsers(count int) {
 
 func fetchTicketById(ticketId int) (*Ticket, error) {
 
+	ticketLock.RLock()
+	defer ticketLock.RUnlock()
 	if ticket, exists := tickets[ticketId]; exists {
 		return ticket, nil
 	}
@@ -82,6 +85,8 @@ func fetchTicketById(ticketId int) (*Ticket, error) {
 
 func fetchUserById(userId int) (*User, error) {
 
+	userLock.RLock()
+	defer userLock.RUnlock()
 	if user, exists := users[userId]; exists {
 		return user, nil
 	}
@@ -89,8 +94,8 @@ func fetchUserById(userId int) (*User, error) {
 }
 
 func BookTicket(userId int, ticketId int) error {
-	mu.Lock()
-	defer mu.Unlock()
+	ticketLock.RLock()
+	defer ticketLock.RUnlock()
 
 	ticket, err := fetchTicketById(ticketId)
 	if err != nil {
