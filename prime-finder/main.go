@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -20,10 +21,10 @@ func isPrime(num int) bool {
 	return true
 }
 
-func generatePrimeNumbers(n int, resultChan chan int, wg *sync.WaitGroup) {
+func generatePrimeNumbers(start int, end int, resultChan chan int, wg *sync.WaitGroup) {
 
 	defer wg.Done()
-	for i := 1; i <= n; i++ {
+	for i := start; i <= end; i++ {
 		if isPrime(i) {
 			resultChan <- i
 		}
@@ -33,14 +34,22 @@ func generatePrimeNumbers(n int, resultChan chan int, wg *sync.WaitGroup) {
 
 func main() {
 
+	numOfGoroutines := runtime.NumCPU()
 	start := time.Now()
 
 	n := 1000000
 	var wg sync.WaitGroup
 	resultChan := make(chan int, n)
-	wg.Add(1)
 
-	go generatePrimeNumbers(n, resultChan, &wg)
+	rangeSize := n / numOfGoroutines
+
+	for i := 0; i < numOfGoroutines; i++ {
+
+		start := rangeSize*i + 1
+		end := (i + 1) * rangeSize
+		wg.Add(1)
+		go generatePrimeNumbers(start, end, resultChan, &wg)
+	}
 
 	wg.Wait()
 	close(resultChan)
