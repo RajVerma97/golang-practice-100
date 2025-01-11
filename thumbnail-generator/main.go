@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/nfnt/resize"
 )
@@ -106,25 +107,39 @@ func createFile(inputPath string, config *Config) error {
 	return nil
 
 }
-func generateThumnails(config *Config) error {
+func generateThumnails(config *Config, wg *sync.WaitGroup) error {
+
+	concurrency := config.Concurrency
 	inputPaths := config.InputPaths
-	var failedPaths []string
+	tasks := make(chan string, len(inputPaths))
 
 	for _, inputPath := range inputPaths {
-		if err := createFile(inputPath, config); err != nil {
-			fmt.Printf("Failed to process %s: %v\n", inputPath, err)
-			failedPaths = append(failedPaths, inputPath)
-		}
+		tasks <- inputPath
+	}
+	close(tasks)
+
+	for i := 0; i < concurrency; i++ {
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for inputPath := range tasks {
+
+				createFile(inputPath, config)
+			}
+
+		}()
+
 	}
 
-	if len(failedPaths) > 0 {
-		return fmt.Errorf("failed to process %d files", len(failedPaths))
-	}
+	wg.Wait()
 
 	return nil
 }
 
 func main() {
+
+	var wg sync.WaitGroup
 
 	configFilePath := "./thumbnail-generator/config.json"
 
@@ -134,7 +149,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	err = generateThumnails(config)
+	err = generateThumnails(config, &wg)
 	if err != nil {
 		fmt.Printf("err %s", err)
 	}
