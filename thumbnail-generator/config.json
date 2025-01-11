@@ -1,0 +1,12 @@
+{
+  "inputPaths": [
+    "./thumbnail-generator/images/rajneesh.jpg",
+    "./thumbnail-generator/images/goku.jpg",
+    "./thumbnail-generator/images/ssb-blue.jpg"
+  ],
+  "outputDirectory": "./thumbnail-generator/thumbnails/",
+  "thumbnailWidth": 150,
+  "thumbnailHeight": 150,
+  "concurrency": 4,
+  "supportedFormats": ["jpeg"]
+}
