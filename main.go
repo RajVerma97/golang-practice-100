@@ -3,6 +3,6 @@ package main
 import "fmt"
 
 func main() {
-  fmt.Println("example feature branch " )
+  fmt.Println("pullled from the github " )
   
 }
